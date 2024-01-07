@@ -1,0 +1,8 @@
+{
+  "required": true,
+  "compatibilityLevel": "JAVA_8",
+  "package": "tech.transfems.hitboxes.mixin",
+  "mixins": [
+    "MixinEntityRenderer"
+  ]
+}

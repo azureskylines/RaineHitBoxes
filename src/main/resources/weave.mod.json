@@ -1,0 +1,10 @@
+{
+  "entrypoints": [
+    "tech.transfems.hitboxes.Initializer"
+  ],
+  "mixinConfigs": [
+    "rainehitboxes.mixins.json"
+  ],
+  "name": "Raine HitBoxes",
+  "modId": "rainehitboxes"
+}
