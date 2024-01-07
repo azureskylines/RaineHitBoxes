@@ -10,6 +10,7 @@ import java.io.File
 import java.io.FileReader
 import java.io.FileWriter
 import java.nio.file.Paths
+import kotlin.math.abs
 
 object RaineHitBoxes {
 
@@ -19,12 +20,15 @@ object RaineHitBoxes {
     }
 
     var expandAmount: Double = 0.0
+    var enabled: Boolean = false
 
     private fun save() {
         if (!cfgFile.exists()) cfgFile.createNewFile()
 
+        val config = arrayOf(expandAmount.toString(), enabled.toString())
+
         val writer = BufferedWriter(FileWriter(cfgFile))
-        writer.write(expandAmount.toString())
+        writer.write(config.joinToString("|"))
         writer.close()
     }
 
@@ -32,8 +36,11 @@ object RaineHitBoxes {
         if (!cfgFile.exists()) return
 
         val reader = BufferedReader(FileReader(cfgFile))
-        expandAmount = reader.lines().findFirst().get().toDouble()
+        val config = reader.lines().findFirst().get().split("|")
         reader.close()
+
+        expandAmount = config[0].toDouble()
+        enabled = config[1].toBoolean()
     }
 
     fun init() {
@@ -42,8 +49,15 @@ object RaineHitBoxes {
 
         CommandBus.register(object : Command("rainehitboxes", "rhb") {
             override fun handle(args: Array<out String>) {
+                if (args.isEmpty()) {
+                    enabled = !enabled
+                    addChatMessage("The mod has been ${if (enabled) "enabled" else "disabled"}.")
+                    save()
+                    return
+                }
+
                 if (args.size != 1) {
-                    addChatMessage("Syntax: /rainehitboxes <expand amount>")
+                    addChatMessage("Syntax: /rainehitboxes [expand amount]")
                     return
                 }
 
@@ -55,13 +69,18 @@ object RaineHitBoxes {
                         return
                     }
 
+                    if (amount < 0) {
+                        addChatMessage("Error. Expand amount cannot be negative.")
+                        return
+                    }
+
                     expandAmount = amount
 
                     addChatMessage("Hitboxes are now expanded $expandAmount blocks.")
 
                     save()
                 } catch (e: Throwable) {
-                    addChatMessage("Error. Syntax: /rainehitboxes <expand amount>")
+                    addChatMessage("Error. Syntax: /rainehitboxes [expand amount]")
                 }
             }
         })
