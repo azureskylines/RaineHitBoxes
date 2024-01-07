@@ -13,6 +13,7 @@ import org.spongepowered.asm.mixin.Mixin
 import org.spongepowered.asm.mixin.Overwrite
 import org.spongepowered.asm.mixin.Shadow
 import tech.transfems.hitboxes.RaineHitBoxes.expandAmount
+import tech.transfems.hitboxes.RaineHitBoxes.enabled
 
 @Mixin(value = [EntityRenderer::class], priority = 100)
 class MixinEntityRenderer {
@@ -59,14 +60,15 @@ class MixinEntityRenderer {
                 for (i in entities.indices) {
                     val target = entities[i]
                     val borderSize = target.collisionBorderSize
-                    val targetBoundingBox = target.entityBoundingBox
+                    var targetBoundingBox = target.entityBoundingBox
                         .expand(borderSize.toDouble(), borderSize.toDouble(), borderSize.toDouble())
-                        .expand(expandAmount, expandAmount, expandAmount)
+                    if (enabled)
+                        targetBoundingBox = targetBoundingBox.expand(expandAmount, expandAmount, expandAmount)
                     val intercept = targetBoundingBox.calculateIntercept(hitOrigin, hitVec)
                     if (targetBoundingBox.isVecInside(hitOrigin)) {
-                        if (targetDist >= 0.0 && (if (target is EntityLivingBase) target.health <= targetHealth else true)) {
+                        if (targetDist >= 0.0 && (if (target is EntityLivingBase && enabled) target.health <= targetHealth else true)) {
                             this.pointedEntity = target
-                            if (target is EntityLivingBase) {
+                            if (target is EntityLivingBase && enabled) {
                                 targetHealth = target.health
                             }
                             interceptPoint = if (intercept == null) hitOrigin else intercept.hitVec
@@ -74,12 +76,12 @@ class MixinEntityRenderer {
                         }
                     } else if (intercept != null) {
                         val interceptReach = hitOrigin.distanceTo(intercept.hitVec)
-                        if ((if (target is EntityLivingBase) target.health < targetHealth else interceptReach < targetDist) || targetDist == 0.0) {
+                        if ((if (target is EntityLivingBase&& enabled) target.health < targetHealth else interceptReach < targetDist) || targetDist == 0.0) {
                             if (target === entity.ridingEntity) {
                                 if (targetDist == 0.0) {
                                     this.pointedEntity = target
                                     interceptPoint = intercept.hitVec
-                                    if (target is EntityLivingBase) {
+                                    if (target is EntityLivingBase && enabled) {
                                         targetHealth = target.health
                                     }
                                 }
@@ -87,7 +89,7 @@ class MixinEntityRenderer {
                                 this.pointedEntity = target
                                 interceptPoint = intercept.hitVec
                                 targetDist = interceptReach
-                                if (target is EntityLivingBase) {
+                                if (target is EntityLivingBase && enabled) {
                                     targetHealth = target.health
                                 }
                             }
