@@ -15,19 +15,34 @@ import java.nio.file.Paths
 
 object RaineHitBoxes {
 
+    object Config {
+        var masterToggle: Boolean = false
+        var expand: Double = 0.0
+        var healthEnabled: Boolean = false
+        var speedEnabled: Boolean = false
+    }
+
     private val cfgFile: File by lazy { Paths.get("RaineHitBoxes.config").toFile() }
     private val addChatMessage: (String) -> Unit = {
         Minecraft.getMinecraft().thePlayer.addChatMessage(ChatComponentText(it))
     }
 
-    var expandAmount: Double = 0.0
-    var healthEnabled: Boolean = false
-    var speedEnabled: Boolean = false
+    var expandAmount: Double
+        get() = if (Config.masterToggle) Config.expand else 0.0
+        set(value) { Config.expand = value }
+
+    var healthEnabled: Boolean
+        get() = Config.masterToggle && Config.healthEnabled
+        set(value) { Config.healthEnabled = value }
+
+    var speedEnabled: Boolean
+        get() = Config.masterToggle && Config.speedEnabled
+        set(value) { Config.speedEnabled = value }
 
     private fun save() {
         if (!cfgFile.exists()) cfgFile.createNewFile()
 
-        val config = arrayOf(expandAmount.toString(), healthEnabled.toString(), speedEnabled.toString())
+        val config = arrayOf(Config.masterToggle, Config.expand.toString(), Config.healthEnabled.toString(), Config.speedEnabled.toString())
 
         val writer = BufferedWriter(FileWriter(cfgFile))
         writer.write(config.joinToString("|"))
@@ -42,14 +57,16 @@ object RaineHitBoxes {
             val config = reader.lines().findFirst().get().split("|")
             reader.close()
 
-            expandAmount = config[0].toDouble()
-            healthEnabled = config[1].toBoolean()
-            speedEnabled = config[2].toBoolean()
+            Config.masterToggle = config[0].toBoolean()
+            Config.expand = config[1].toDouble()
+            Config.healthEnabled = config[2].toBoolean()
+            Config.speedEnabled = config[3].toBoolean()
         } catch (e: Throwable) {
             println("[RaineHitBoxes] Failed to load config, resetting it :3")
-            expandAmount = 0.0
-            healthEnabled = false
-            speedEnabled = false
+            Config.masterToggle = false
+            Config.expand = 0.0
+            Config.healthEnabled = false
+            Config.speedEnabled = false
         }
     }
 
@@ -61,6 +78,11 @@ object RaineHitBoxes {
 
         CommandBus.register(object : Command("rainehitboxes", "rhb") {
             override fun handle(args: Array<out String>) {
+                if (args.isEmpty()) {
+                    Config.masterToggle = !Config.masterToggle
+                    addChatMessage("The mod has been ${if (Config.masterToggle) "enabled" else "disabled"}.")
+                }
+
                 if (args.size != 1) {
                     addChatMessage("Syntax: $SYNTAX")
                     return
@@ -68,12 +90,12 @@ object RaineHitBoxes {
 
                 when (args[0]) {
                     "health" -> {
-                        healthEnabled = !healthEnabled
-                        addChatMessage("Health sorting has been ${if (healthEnabled) "enabled" else "disabled"}.")
+                        Config.healthEnabled = !Config.healthEnabled
+                        addChatMessage("Health sorting has been ${if (Config.healthEnabled) "enabled" else "disabled"}.")
                     }
                     "speed" -> {
-                        speedEnabled = !speedEnabled
-                        addChatMessage("Speed II check has been ${if (speedEnabled) "enabled" else "disabled"}.")
+                        Config.speedEnabled = !Config.speedEnabled
+                        addChatMessage("Speed II check has been ${if (Config.speedEnabled) "enabled" else "disabled"}.")
                     }
                     else -> {
                         try {
@@ -89,9 +111,9 @@ object RaineHitBoxes {
                                 return
                             }
 
-                            expandAmount = amount
+                            Config.expand = amount
 
-                            addChatMessage("HitBoxes are now expanded $expandAmount blocks.")
+                            addChatMessage("HitBoxes are now expanded $amount blocks.")
 
                             save()
                         } catch (e: Throwable) {

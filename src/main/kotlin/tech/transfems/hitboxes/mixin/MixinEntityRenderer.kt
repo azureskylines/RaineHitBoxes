@@ -63,7 +63,7 @@ class MixinEntityRenderer {
                 for (i in entities.indices) {
                     val target = entities[i]
 
-                    if (speedEnabled && target is EntityLivingBase && target.potionAmp(Potion.moveSpeed) == 2) {
+                    if (speedEnabled && target is EntityLivingBase && target.potionAmp(Potion.moveSpeed) != 2) {
                         continue
                     }
 
@@ -83,7 +83,7 @@ class MixinEntityRenderer {
                         }
                     } else if (intercept != null) {
                         val interceptReach = hitOrigin.distanceTo(intercept.hitVec)
-                        if ((if (target is EntityLivingBase&& healthEnabled) target.health < targetHealth else interceptReach < targetDist) || targetDist == 0.0) {
+                        if ((if (target is EntityLivingBase && healthEnabled) target.health < targetHealth else interceptReach < targetDist) || targetDist == 0.0) {
                             if (target === entity.ridingEntity) {
                                 if (targetDist == 0.0) {
                                     this.pointedEntity = target
