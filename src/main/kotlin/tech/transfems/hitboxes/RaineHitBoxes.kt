@@ -1,6 +1,8 @@
 package tech.transfems.hitboxes
 
 import net.minecraft.client.Minecraft
+import net.minecraft.entity.EntityLivingBase
+import net.minecraft.potion.Potion
 import net.minecraft.util.ChatComponentText
 import net.weavemc.loader.api.command.Command
 import net.weavemc.loader.api.command.CommandBus
@@ -10,7 +12,6 @@ import java.io.File
 import java.io.FileReader
 import java.io.FileWriter
 import java.nio.file.Paths
-import kotlin.math.abs
 
 object RaineHitBoxes {
 
@@ -20,12 +21,13 @@ object RaineHitBoxes {
     }
 
     var expandAmount: Double = 0.0
-    var enabled: Boolean = false
+    var healthEnabled: Boolean = false
+    var speedEnabled: Boolean = false
 
     private fun save() {
         if (!cfgFile.exists()) cfgFile.createNewFile()
 
-        val config = arrayOf(expandAmount.toString(), enabled.toString())
+        val config = arrayOf(expandAmount.toString(), healthEnabled.toString(), speedEnabled.toString())
 
         val writer = BufferedWriter(FileWriter(cfgFile))
         writer.write(config.joinToString("|"))
@@ -35,13 +37,23 @@ object RaineHitBoxes {
     private fun load() {
         if (!cfgFile.exists()) return
 
-        val reader = BufferedReader(FileReader(cfgFile))
-        val config = reader.lines().findFirst().get().split("|")
-        reader.close()
+        try {
+            val reader = BufferedReader(FileReader(cfgFile))
+            val config = reader.lines().findFirst().get().split("|")
+            reader.close()
 
-        expandAmount = config[0].toDouble()
-        enabled = config[1].toBoolean()
+            expandAmount = config[0].toDouble()
+            healthEnabled = config[1].toBoolean()
+            speedEnabled = config[2].toBoolean()
+        } catch (e: Throwable) {
+            println("[RaineHitBoxes] Failed to load config, resetting it :3")
+            expandAmount = 0.0
+            healthEnabled = false
+            speedEnabled = false
+        }
     }
+
+    const val SYNTAX: String = "/rainehitboxes [speed|health|<expand amount>]"
 
     fun init() {
         println("[RaineHitBoxes] Cooked.")
@@ -49,41 +61,50 @@ object RaineHitBoxes {
 
         CommandBus.register(object : Command("rainehitboxes", "rhb") {
             override fun handle(args: Array<out String>) {
-                if (args.isEmpty()) {
-                    enabled = !enabled
-                    addChatMessage("The mod has been ${if (enabled) "enabled" else "disabled"}.")
-                    save()
-                    return
-                }
-
                 if (args.size != 1) {
-                    addChatMessage("Syntax: /rainehitboxes [expand amount]")
+                    addChatMessage("Syntax: $SYNTAX")
                     return
                 }
 
-                try {
-                    val amount = args[0].toDoubleOrNull()
-
-                    if (amount == null) {
-                        addChatMessage("Error. Expand amount has to be a decimal number.")
-                        return
+                when (args[0]) {
+                    "health" -> {
+                        healthEnabled = !healthEnabled
+                        addChatMessage("Health sorting has been ${if (healthEnabled) "enabled" else "disabled"}.")
                     }
-
-                    if (amount < 0) {
-                        addChatMessage("Error. Expand amount cannot be negative.")
-                        return
+                    "speed" -> {
+                        speedEnabled = !speedEnabled
+                        addChatMessage("Speed II check has been ${if (speedEnabled) "enabled" else "disabled"}.")
                     }
+                    else -> {
+                        try {
+                            val amount = args[0].toDoubleOrNull()
 
-                    expandAmount = amount
+                            if (amount == null) {
+                                addChatMessage("Error. Expand amount has to be a decimal number.")
+                                return
+                            }
 
-                    addChatMessage("Hitboxes are now expanded $expandAmount blocks.")
+                            if (amount < 0) {
+                                addChatMessage("Error. Expand amount cannot be negative.")
+                                return
+                            }
 
-                    save()
-                } catch (e: Throwable) {
-                    addChatMessage("Error. Syntax: /rainehitboxes [expand amount]")
+                            expandAmount = amount
+
+                            addChatMessage("HitBoxes are now expanded $expandAmount blocks.")
+
+                            save()
+                        } catch (e: Throwable) {
+                            addChatMessage("Error. Syntax: $SYNTAX")
+                        }
+                    }
                 }
             }
         })
     }
 
+}
+
+fun EntityLivingBase.potionAmp(potion: Potion): Int {
+    return (this.getActivePotionEffect(potion) ?: return 0).amplifier + 1
 }

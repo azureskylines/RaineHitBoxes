@@ -7,13 +7,16 @@ import net.minecraft.client.renderer.EntityRenderer
 import net.minecraft.entity.Entity
 import net.minecraft.entity.EntityLivingBase
 import net.minecraft.entity.item.EntityItemFrame
+import net.minecraft.potion.Potion
 import net.minecraft.util.*
 import net.minecraft.util.MovingObjectPosition.MovingObjectType
 import org.spongepowered.asm.mixin.Mixin
 import org.spongepowered.asm.mixin.Overwrite
 import org.spongepowered.asm.mixin.Shadow
 import tech.transfems.hitboxes.RaineHitBoxes.expandAmount
-import tech.transfems.hitboxes.RaineHitBoxes.enabled
+import tech.transfems.hitboxes.RaineHitBoxes.healthEnabled
+import tech.transfems.hitboxes.RaineHitBoxes.speedEnabled
+import tech.transfems.hitboxes.potionAmp
 
 @Mixin(value = [EntityRenderer::class], priority = 100)
 class MixinEntityRenderer {
@@ -59,16 +62,20 @@ class MixinEntityRenderer {
                 var targetHealth = Float.MAX_VALUE
                 for (i in entities.indices) {
                     val target = entities[i]
+
+                    if (speedEnabled && target is EntityLivingBase && target.potionAmp(Potion.moveSpeed) == 2) {
+                        continue
+                    }
+
                     val borderSize = target.collisionBorderSize
-                    var targetBoundingBox = target.entityBoundingBox
+                    val targetBoundingBox = target.entityBoundingBox
                         .expand(borderSize.toDouble(), borderSize.toDouble(), borderSize.toDouble())
-                    if (enabled)
-                        targetBoundingBox = targetBoundingBox.expand(expandAmount, expandAmount, expandAmount)
+                        .expand(expandAmount, expandAmount, expandAmount)
                     val intercept = targetBoundingBox.calculateIntercept(hitOrigin, hitVec)
                     if (targetBoundingBox.isVecInside(hitOrigin)) {
-                        if (targetDist >= 0.0 && (if (target is EntityLivingBase && enabled) target.health <= targetHealth else true)) {
+                        if (targetDist >= 0.0 && (if (target is EntityLivingBase && healthEnabled) target.health <= targetHealth else true)) {
                             this.pointedEntity = target
-                            if (target is EntityLivingBase && enabled) {
+                            if (target is EntityLivingBase && healthEnabled) {
                                 targetHealth = target.health
                             }
                             interceptPoint = if (intercept == null) hitOrigin else intercept.hitVec
@@ -76,12 +83,12 @@ class MixinEntityRenderer {
                         }
                     } else if (intercept != null) {
                         val interceptReach = hitOrigin.distanceTo(intercept.hitVec)
-                        if ((if (target is EntityLivingBase&& enabled) target.health < targetHealth else interceptReach < targetDist) || targetDist == 0.0) {
+                        if ((if (target is EntityLivingBase&& healthEnabled) target.health < targetHealth else interceptReach < targetDist) || targetDist == 0.0) {
                             if (target === entity.ridingEntity) {
                                 if (targetDist == 0.0) {
                                     this.pointedEntity = target
                                     interceptPoint = intercept.hitVec
-                                    if (target is EntityLivingBase && enabled) {
+                                    if (target is EntityLivingBase && healthEnabled) {
                                         targetHealth = target.health
                                     }
                                 }
@@ -89,7 +96,7 @@ class MixinEntityRenderer {
                                 this.pointedEntity = target
                                 interceptPoint = intercept.hitVec
                                 targetDist = interceptReach
-                                if (target is EntityLivingBase && enabled) {
+                                if (target is EntityLivingBase && healthEnabled) {
                                     targetHealth = target.health
                                 }
                             }
